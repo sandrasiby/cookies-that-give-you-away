@@ -12,7 +12,7 @@
 
 ==============================================================================
 """     
-from urlparse import urlparse
+from urllib.parse import urlparse
 import cPickle
 import sqlite3
 import networkx

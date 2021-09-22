@@ -1,6 +1,6 @@
 import difflib
 import itertools
-import urlparse
+from urllib.parse import urlparse
 from tld import get_tld
 from collections import defaultdict
 import sqlite3 as lite

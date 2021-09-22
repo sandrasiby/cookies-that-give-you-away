@@ -10,13 +10,13 @@ import datetime
 # based on a few known delimiters; adds these pairs to the raw cookie value dictionary
 # currently uses two known delimiters
 def add_inner_cookie_parameters(raw_cookie_dict, domain, name, value):
-    delimiters = [":", "&"]  # currently known inner cookie delimiters
+    
+    delimiters = [":", "&", ".", "|", ";", "-"]  # currently known inner cookie delimiters
     for delimiter in delimiters:
         parts = value.split(delimiter)
-
+        #print("parts:", parts)
         for part in parts:
             params = part.split("=")
-
             if len(params) == 2 and params[0] != '' and params[1] != '':
                 raw_cookie_dict[(domain, name + "#" + params[0])].append(params[1])
 
@@ -32,26 +32,25 @@ def extract_persistent_ids_from_dbs(cookie_dbs, num_days=30):
         raw_cookie_dict = defaultdict(list)  # maps (domain, names) to lists of values
         
         for domain, name, value, access, expiry \
-                in curr.execute("SELECT domain, name, value, accessed, expires FROM http_cookies WHERE http_type = 'response'"):
+                in curr.execute("SELECT host, name, value, time_stamp, expiry FROM javascript_cookies"):# WHERE http_type = 'response'"):
 
             # ignores cookies with blank or incomplete measurements
             if domain == '' or name == '' or value == '':
                 continue
 
             # ignores session cookies
-            if expiry is None:
+            if (expiry is None) or (expiry == "9999-12-31T21:59:59.000Z"):
                 continue
-            
+
             # prune away cookies with expiry times under a month
-            expiry = datetime.datetime.strptime(expiry, "%Y-%m-%d %H:%M:%S")
-            access = datetime.datetime.strptime(access.split('.')[0], "%Y-%m-%d %H:%M:%S")
+            expiry = datetime.datetime.strptime(expiry.split('.')[0], "%Y-%m-%dT%H:%M:%S")
+            access = datetime.datetime.strptime(access.split('.')[0], "%Y-%m-%dT%H:%M:%S")
             if (expiry - access).days < num_days:
                 continue
 
             # add the full value strings then attempt to parse and add nested values as well
             raw_cookie_dict[(domain, name)].append(value)
             add_inner_cookie_parameters(raw_cookie_dict, domain, name, value)
-
     # only keep cookies with values that remain constant throughout the crawl
     final_cookie_dict = {}
     for cookie in raw_cookie_dict:
